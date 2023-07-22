@@ -35,7 +35,13 @@ const GamePage = () => {
     const [showResult, setShowResult] = useState(false);
     const [totalCharactersTyped, setTotalCharactersTyped] = useState(0);
     const [correctCharacters, setCorrectCharacters] = useState(0);
+    const [accuracy, setAccuracy] = useState(0);
 
+    useEffect(() => {
+        setAccuracy(0);
+        loadParagraph();
+    }, []);
+    
     useEffect(() => {
         let timer;
         if (timeLeft > 0 && !showResult) {
@@ -49,14 +55,6 @@ const GamePage = () => {
 
         return () => clearInterval(timer);
     }, [timeLeft, showResult]);
-
-    const [accuracy, setAccuracy] = useState(0);
-
-    useEffect(() => {
-        setAccuracy(0);
-        loadParagraph();
-    }, []);
-
 
     const loadParagraph = () => {
         const ranIndex = Math.floor(Math.random() * sentences[gameMode].length);

@@ -20,55 +20,6 @@ const io = socketIO(server, {
 
 const PORT = process.env.PORT || 5000;
 
-// const rooms = [];
-
-// io.on('connection', (socket) => {
-//     console.log(`New connection: ${socket.id}`);
-
-//     // Handle user clicking start button
-//     socket.on('startGame', (username) => {
-//         const user = { id: socket.id, username };
-//         const availableRoom = rooms.find((room) => room.length < 3);
-//         if (availableRoom) {
-//             availableRoom.push(user);
-//         } else {
-//             rooms.push([user]);
-//         }
-//         socket.join(rooms.length - 1);
-//         io.to(socket.id).emit('roomAssigned', rooms.length - 1);
-//         io.in(rooms.length - 1).emit('roomUpdate', rooms[rooms.length - 1]);
-//     });
-
-//     // socket.on('sendMessage', (message) => {
-//     //     const index = rooms.findIndex((room) => room.some((user) => user.id === socket.id));
-//     //     if (index !== -1) {
-//     //         const room = rooms[index];
-//     //         const user = room.find((user) => user.id === socket.id);
-//     //         io.in(index).emit('receiveMessage', { sender: user.username, message });
-//     //     }
-//     // });
-
-//     socket.on('sendProgress', (progress) => {
-//         console.log(socket.id, progress);
-//         const index = rooms.findIndex((room) => room.some((user) => user.id === socket.id));
-//         if (index !== -1) {
-//             const room = rooms[index];
-//             console.log(room);
-//             const user = room.find((user) => user.id === socket.id);
-//             io.in(index).emit('receiveProgress', { sender: user.username, progress });
-//         }
-//     });
-
-//     socket.on('disconnect', () => {
-//         console.log(`Disconnected: ${socket.id}`);
-//         const index = rooms.findIndex((room) => room.some((user) => user.id === socket.id));
-//         if (index !== -1) {
-//             rooms[index] = rooms[index].filter((user) => user.id !== socket.id);
-//             io.in(index).emit('roomUpdate', rooms[index]);
-//         }
-//     });
-// });
-
 const rooms = new PriorityQueue();
 const privateRooms = {};
 
@@ -79,23 +30,16 @@ const createRoom = (roomId, username, sockId, gameMode) => {
         startTime: Math.floor(Date.now() / 1000),
         endTime: Math.floor(Date.now() / 1000) + 30,
         roomMembers: [{sockId, username}],
-        paragraph: sentences[gameMode][ranIndex]
+        paragraph: sentences[gameMode][ranIndex],
+        winner: ''
     }
 }
-
-const removeExpiredRooms = () => {
-    const currentTime = Math.floor(Date.now() / 1000);
-    while (rooms.peek() && rooms.peek().endTime <= currentTime) {
-        rooms.dequeue();
-    }
-};
 
 io.on('connection', (socket) => {
     console.log(`New connection: ${socket.id}`);
 
-    socket.on('create-room', ({username, roomId}) => {
-        const room = createRoom(roomId, username, id = socket.id);
-        // privateRooms.set(roomId, room);
+    socket.on('create-room', ({username, roomId, gameMode}) => {
+        const room = createRoom(roomId, username, id = socket.id, gameMode);
         privateRooms[roomId] = room;
         socket.join(roomId);
         io.in(roomId).emit('roomUpdate', privateRooms[roomId]);
@@ -103,14 +47,14 @@ io.on('connection', (socket) => {
 
     socket.on('join-room', ({username, roomId}) => {
         const availableRoom = privateRooms[roomId];
-        if (availableRoom && availableRoom.roomMembers.length < 3) {
+        if (availableRoom && availableRoom.roomMembers.length < 10) {
             socket.join(roomId);
             availableRoom.roomMembers.push({sockId: socket.id, username})
             privateRooms[roomId] = availableRoom;
             io.in(roomId).emit('roomUpdate', privateRooms[roomId]);
         }
         else
-            io.to(socket.id).emit('no-room', roomId);  
+            io.to(socket.id).emit('no-room', roomId);
     })
 
     socket.on('sendStartStatus', (roomId) => {
@@ -142,8 +86,8 @@ io.on('connection', (socket) => {
         }
     });
 
-    socket.on('sendProgress', ({username, roomId, progress, wpm}) => {
-        io.in(roomId).emit('receiveProgress', { sender: username, progress, wpm }); 
+    socket.on('sendProgress', ({username, roomId, progress, wpm, accuracy}) => {
+        io.in(roomId).emit('receiveProgress', { sender: username, progress, wpm, accuracy }); 
     });
 
     socket.on('disconnect', () => {

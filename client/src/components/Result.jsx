@@ -1,5 +1,6 @@
 import React from 'react';
 import { Backdrop, Box, Modal, Fade, Button, Typography } from '@mui/material/';
+import { useNavigate } from 'react-router-dom'
 
 const styles = {
     box: {
@@ -50,7 +51,11 @@ const styles = {
     },
 };
 
-export default function Result({ open, handleClose, mistakes, wpm, timeLeft, accuracy }) {
+export default function Result({ open, mistakes, wpm, timeLeft, accuracy, playersProgress }) {
+    const navigate = useNavigate();
+    const handleClose = () => {
+        navigate("/")
+    }
     return (
         <div>
             <Modal
@@ -67,6 +72,7 @@ export default function Result({ open, handleClose, mistakes, wpm, timeLeft, acc
                 <Fade in={open}>
                     <Box sx={styles.box}>
                         <Box sx={styles.contents}>
+                            
                             <Typography variant="h6" sx={styles.label}>
                                 Mistakes:
                             </Typography>

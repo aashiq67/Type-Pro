@@ -3,7 +3,7 @@ import { Typography } from '@mui/material'
 
 const Logo = () => {
   return (
-    <Typography sx={logoStyle}>TypeNinja</Typography>
+    <Typography sx={logoStyle}>TypePro</Typography>
   )
 }
 

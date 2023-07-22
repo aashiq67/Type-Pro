@@ -18,9 +18,9 @@ const styles = {
     },
 
     playBtn: {
-        padding: '10%',
-        width: '100px',
-        margin: '10px auto',
+        // padding: '10%',
+        width: '250px',
+        margin: '25% auto',
         backgroundColor: '#feb236',
         color: 'black',
         fontWeight: 'bold',

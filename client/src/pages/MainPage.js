@@ -7,6 +7,7 @@ import './../App.css'
 import PopUp from './../components/PopUp'
 import VolumeUpIcon from '@mui/icons-material/VolumeUp';
 import Logo from "../components/Logo";
+import HowToPlayPopUp from "../components/HowToPlayPopUp";
 
 import { useNavigate } from "react-router-dom";
 
@@ -32,18 +33,16 @@ const MainPage = () => {
 }
 
 const Navbar = ({ index, setIndex }) => {
+    const newStyle = { ...styles.listBtn, backgroundColor: 'orange' }
     return (
         <Box sx={styles.nav}>
             <Logo />
             <ul style={{ ...styles.ul, width: '35%' }}>
-                <Button sx={styles.listBtn} onClick={() => setIndex(0)}><li style={styles.li1}>Multi Player</li></Button>
-                <Button sx={styles.listBtn} onClick={() => setIndex(1)}><li style={styles.li1}>Single Player</li></Button>
-                <Button sx={styles.listBtn} onClick={() => setIndex(2)}><li style={styles.li1}>Play with friends</li></Button>
+                <Button sx={index === 0 ? newStyle : styles.listBtn} onClick={() => setIndex(0)}><li style={styles.li1}>Multi Player</li></Button>
+                <Button sx={index === 1 ? newStyle : styles.listBtn} onClick={() => setIndex(1)}><li style={styles.li1}>Single Player</li></Button>
+                <Button sx={index === 2 ? newStyle : styles.listBtn} onClick={() => setIndex(2)}><li style={styles.li1}>Play with friends</li></Button>
             </ul>
-            <ul style={{ ...styles.ul, width: '10%' }}>
-                <IconButton sx={styles.iconBtn}><li style={styles.li2}><VolumeUpIcon /></li></IconButton>
-                <li style={styles.li2}>Ping: 175</li>
-            </ul>
+            <Box></Box>
         </Box>
     )
 }
@@ -62,8 +61,8 @@ const LeftBox = () => {
     return (
         <Box sx={styles.leftBox}>
             <Box sx={styles.intro}>
-                <TextField value={username} onChange={changeUsername}></TextField>
-                <Button sx={styles.howToPlayBtn} variant="contained">How to Play</Button>
+                <TextField value={username} sx={{ backgroundColor: "lightblue" }} onChange={changeUsername}></TextField>
+                <HowToPlayPopUp />
             </Box>
         </Box>
     );
@@ -72,16 +71,16 @@ const LeftBox = () => {
 const RightBox = ({ index }) => {
     const navigate = useNavigate();
     const [playBtnDetails, setPlayBtnDetails] = useState({
-        btnName: 'Play MP',
+        btnName: 'Play MultiPlayer',
         route: '/multiplay'
     });
     const [roomNo, setRoomNo] = useState();
 
     useEffect(() => {
         if (index === 0)
-            setPlayBtnDetails({ route: '/multiplay', btnName: 'Play MP' })
+            setPlayBtnDetails({ route: '/multiplay', btnName: 'Play in Multiplayer Mode' })
         else if (index === 1)
-            setPlayBtnDetails({ route: '/singleplay', btnName: 'Play SP' })
+            setPlayBtnDetails({ route: '/singleplay', btnName: 'Play in SinglePlayer Mode' })
         else
             setPlayBtnDetails({ route: '/frdsplay', btnName: 'Create' })
     }, [index])
@@ -96,7 +95,7 @@ const RightBox = ({ index }) => {
                 <PopUp playBtnDetails={playBtnDetails} />
                 {playBtnDetails.btnName === 'Create' &&
                     <>
-                        <TextField placeholder="Enter room" onChange={(e) => setRoomNo(e.target.value)}></TextField>
+                    <TextField placeholder="Enter room" sx={{ backgroundColor: "lightblue" }} onChange={(e) => setRoomNo(e.target.value)}></TextField>
                         <Button sx={styles.playBtn} variant='contained' onClick={handleJoin}>Join</Button>
                     </>
                 }
@@ -159,7 +158,7 @@ const styles = {
         // border: '1px solid blue',
         padding: '3% 1%',
         width: '20vw',
-        height: '70vh',
+        height: '50vh',
     },
     intro: {
         display: 'flex',
@@ -168,10 +167,11 @@ const styles = {
 
         padding: '10% 5%',
 
-        border: '3px solid blue',
+        border: '3px solid rgba(188, 196, 195)',
         borderRadius: '10px',
-        height: '30%'
+        height: '30%',
 
+        backgroundColor: 'rgba(188, 196, 195, 0.5)',
     },
 
     howToPlayBtn: {
@@ -190,16 +190,20 @@ const styles = {
 
         // border: '1px solid blue',
         padding: '1%',
-        width: '80vw',
+        width: '65vw',
 
     },
     centerBox: {
         // border: '1px solid black',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'right',
+        width: '250px',
         padding: '1%',
     },
     playBtn: {
-        padding: '10%',
-        width: '100px',
+        // padding: '10%',
+        width: '250px',
         margin: '10px auto',
         backgroundColor: '#feb236',
         color: 'black',

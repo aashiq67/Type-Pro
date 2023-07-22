@@ -17,7 +17,7 @@ const ProgressBar = ({ progress }) => {
     );
 };
 
-const MultiGame = ({socket, room, resetGame}) => {
+const MultiGame = ({socket, room}) => {
     // const navigate = useNavigate();
     // const gameMode = useSelector(state => state.currInfoReducer.gameMode)
     // const duration = useSelector(state => state.currInfoReducer.duration)
@@ -32,8 +32,12 @@ const MultiGame = ({socket, room, resetGame}) => {
     const [isTyping, setIsTyping] = useState(false);
     const [timeLeft, setTimeLeft] = useState(60);
     const [showResult, setShowResult] = useState(false);
-    
+    const [totalCharactersTyped, setTotalCharactersTyped] = useState(0);
+    const [correctCharacters, setCorrectCharacters] = useState(0);
+    const [accuracy, setAccuracy] = useState(0);
+
     useEffect(() => {
+        setAccuracy(0);
         loadParagraph();
     }, []);
 
@@ -67,19 +71,24 @@ const MultiGame = ({socket, room, resetGame}) => {
         setInput(e.target.value);
         const typedChar = e.target.value[e.target.value.length - 1];
         if (charIndex < characters.length && timeLeft > 0) {
+            setTotalCharactersTyped((prevCount) => prevCount + 1);
             if (!isTyping) {
                 setIsTyping(true);
             }
             if (e.nativeEvent.inputType === 'deleteContentBackward') {
+                // Backspace or delete key was pressed, handle the logic
+                setTotalCharactersTyped((prevCount) => Math.max(0, prevCount - 1));
                 if (charIndex > 0) {
-                    characters[charIndex - 1].status = 'inactive';
                     setCharIndex((prevIndex) => prevIndex - 1);
-                    if (characters[charIndex - 1].status === 'incorrect') {
-                        setMistakes((prevMistakes) => prevMistakes - 1);
+                    characters[charIndex - 1].status = 'inactive';
+                    setCharacters([...characters]);
+                    if (characters[charIndex - 1].status === 'correct') {
+                        setCorrectCharacters((prevCount) => Math.max(0, prevCount - 1));
                     }
                 }
             } else {
                 if (characters[charIndex].char === typedChar) {
+                    setCorrectCharacters((prevCount) => prevCount + 1);
                     characters[charIndex].status = 'correct';
                 } else {
                     setMistakes((prevMistakes) => prevMistakes + 1);
@@ -92,6 +101,15 @@ const MultiGame = ({socket, room, resetGame}) => {
             setIsTyping(false);
             e.target.value = '';
         }
+
+        const newAccuracy = getAccuracyPercentage();
+        setAccuracy(newAccuracy);
+    };
+
+    const getAccuracyPercentage = () => {
+        const accuracyValue = (correctCharacters / totalCharactersTyped) * 100;
+        const roundedAccuracy = isNaN(accuracyValue) ? 0 : Math.min(100, accuracyValue.toFixed(2));
+        return roundedAccuracy;
     };
 
     const getWPM = () => {
@@ -100,18 +118,15 @@ const MultiGame = ({socket, room, resetGame}) => {
         return wpm < 0 || !wpm || wpm === Infinity ? 0 : wpm;
     };
 
-    const getCPM = () => {
-        const cpm = charIndex - mistakes;
-        return cpm < 0 ? 0 : cpm;
+    const resetGame = () => {
+        setCorrectCharacters(0);
+        setTotalCharactersTyped(0);
+        loadParagraph();
+        setIsTyping(false);
+        setInput("");
+        setShowResult(false);
+        setResultModalOpen(false);
     };
-
-    // const resetGame = () => {
-    //     loadParagraph();
-    //     setIsTyping(false);
-    //     setInput("");
-    //     setShowResult(false);
-    //     setResultModalOpen(false);
-    // };
 
     const [progress, setProgress] = useState(0);
 
@@ -151,6 +166,7 @@ const MultiGame = ({socket, room, resetGame}) => {
     // ]);
 
     const [playersProgress, setPlayersProgress] = useState([]);
+    const [winner, setWinner] = useState('Still Loading...');
 
     useEffect(()=>{
         const data = room.roomMembers.map((member) => {
@@ -161,11 +177,11 @@ const MultiGame = ({socket, room, resetGame}) => {
 
     useEffect(() => {
         if (playersProgress.length === room.roomMembers.length)
-            socket.emit('sendProgress', { username, roomId: room.roomId, progress, wpm: getWPM() });
+            socket.emit('sendProgress', { username, roomId: room.roomId, progress, wpm: getWPM(), accuracy: getAccuracyPercentage() });
     }, [progress, getWPM()])
 
     useEffect(() => {
-        socket.on('receiveProgress', ({ sender, progress, wpm }) => {
+        socket.on('receiveProgress', ({ sender, progress, wpm, accuracy }) => {
             
             const existingPlayerIndex = playersProgress.findIndex((player) => player.name === sender);
             
@@ -173,9 +189,10 @@ const MultiGame = ({socket, room, resetGame}) => {
                 const updatedPlayersProgress = [...playersProgress];
                 updatedPlayersProgress[existingPlayerIndex].progress = progress;
                 updatedPlayersProgress[existingPlayerIndex].wpm = wpm;
+                updatedPlayersProgress[existingPlayerIndex].accuracy = accuracy;
                 setPlayersProgress(updatedPlayersProgress);
             } else {
-                const newPlayerProgress = { name: sender, progress, wpm };
+                const newPlayerProgress = { name: sender, progress, wpm, accuracy };
                 setPlayersProgress([...playersProgress, newPlayerProgress]);
             }
             
@@ -186,10 +203,11 @@ const MultiGame = ({socket, room, resetGame}) => {
         <Box sx={styles.outerBox}>
             {showResult && <Result
                 open={resultModalOpen}
-                handleClose={resetGame}
                 mistakes={mistakes}
                 wpm={getWPM()}
                 timeLeft={timeLeft}
+                accuracy={getAccuracyPercentage()}
+                playersProgress={playersProgress}
             />}
             <Box sx={styles.wrapper} className='wrapper'>
                 <Box sx={styles.progressBar}>
@@ -241,12 +259,11 @@ const MultiGame = ({socket, room, resetGame}) => {
                                 <p>WPM:</p>
                                 <span>{getWPM()}</span>
                             </li>
-                            <li className="cpm">
-                                <p>CPM:</p>
-                                <span>{getCPM()}</span>
+                            <li className="accuracy">
+                                <p>Accuracy:</p>
+                                <span>{getAccuracyPercentage()}%</span>
                             </li>
                         </ul>
-                        <button onClick={resetGame}>Try Again</button>
                     </div>
                 </div>
             </Box>
@@ -259,16 +276,15 @@ const styles = {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '97.9vh'
+        height: '93vh'
     },
 
     progressBar: {
         width: '250px',
         height: '250px',
-        border: '3px solid red',
         position: 'absolute',
         top: 20,
-        left: 20
+        right: 25
     },
 
     wrapper: {
@@ -277,6 +293,7 @@ const styles = {
         background: '#fff',
         borderRadius: '10px',
         boxShadow: '0 10px 15px rgba(0, 0, 0, 0.05)',
+        marginLeft: '100px'
     },
 
     inputField: {
