@@ -1,20 +1,24 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import io from 'socket.io-client';
 import { useSelector } from 'react-redux'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Box, Button, Typography } from '@mui/material'
 import MultiGame from './MultiGame'
 
-const socket = io('http://localhost:5000');
-
 const PlayWithFrdsPage = () => {
     const navigate = useNavigate();
-    const { roomId } = useParams();
-    const isCreated = useSelector(state => state.currInfoReducer.isCreated);
+    const sockRef = useRef(null);
+
     const username = localStorage.getItem('username')
+    
+    const { roomId } = useParams();
+    const gameMode = localStorage.getItem('gameMode')
+    const duration = localStorage.getItem('duration')
+    console.log(duration);
+    const isCreated = localStorage.getItem('isCreated')
+    
     const [room, setRoom] = useState(null);
     const [start, setStart] = useState(false);
-    const gameMode = useSelector(state => state.currInfoReducer.gameMode);
 
     const resetGame = () => {
         // console.log("playing again");
@@ -24,44 +28,63 @@ const PlayWithFrdsPage = () => {
     }
 
     useEffect(() => {
-        console.log(isCreated);
+        const socket = io('http://localhost:5000');
+        if(!sockRef.current)
+            sockRef.current = socket;
         if (isCreated)
-            socket.emit('create-room', { username, roomId, gameMode });
+            sockRef.current.emit('create-room', { username, roomId, gameMode, duration });
         else
-            socket.emit('join-room', { username, roomId });
+            sockRef.current.emit('join-room', { username, roomId });
     }, [])
 
     useEffect(() => {
-        socket.on('receiveStartStatus', ()=>{
+        sockRef.current.on('receiveStartStatus', ()=>{
             setStart(true)
         })
         
-        socket.on('roomUpdate', (room) => {
+        sockRef.current.on('roomUpdate', (room) => {
             console.log(room);
             setRoom(room);
         });
 
-        socket.on('no-room', (roomId) => {
-            alert(`no room exist with id : ${roomId}`)
+        sockRef.current.on('no-room', (message) => {
+            alert(message)
+            localStorage.setItem('gameMode', '')
+            localStorage.setItem('duration', '')
+            localStorage.setItem('isCreated', '')
             navigate("/")
         })
 
-        // return () => {
-        //     socket.disconnect();
-        // };
-    }, [socket]);
+        return () => {
+            sockRef.current.disconnect();
+        };
+    }, []);
 
     const handleStart = () => {
-        socket.emit('sendStartStatus', roomId);
+        sockRef.current.emit('sendStartStatus', roomId);
         setStart(true);
     }
+
+    const contentRef = useRef(null);
+
+    const handleCopyClick = () => {
+        const range = document.createRange();
+        range.selectNode(contentRef.current);
+        window.getSelection().removeAllRanges();
+        window.getSelection().addRange(range);
+        document.execCommand('copy');
+        window.getSelection().removeAllRanges();
+    };
+
 
     return (
         <Box>
             <Box>
                 {room && room.roomId !== null && !start &&
                     <Box sx={styles.container}>
-                        <Typography style={styles.typography}>Room: {(room) ? room.roomId : 'Loading...'}</Typography>
+                        <Typography style={styles.typography}>Room {isCreated ? "Created" : "Joined"}</Typography>
+                        <Typography ref={contentRef} style={styles.typography}>{(room) ? room.roomId : 'Loading...'}</Typography>
+                        <button onClick={handleCopyClick} > copy </button>
                         {/* <ul>
                             {room && room.roomMembers.map((member) => (
                                 <li key={member.sockId}>User: {member.username}</li>
@@ -74,7 +97,7 @@ const PlayWithFrdsPage = () => {
                     
                 }
             </Box>
-            {room && room.roomId !== null && start && <MultiGame socket={socket} room={room} resetGame={resetGame} />}
+            {room && room.roomId !== null && start && <MultiGame sockRef={sockRef} room={room} resetGame={resetGame} />}
         </Box>
     )
 }

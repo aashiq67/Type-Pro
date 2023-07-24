@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Box, TextField, Typography, LinearProgress } from '@mui/material'
 import { useSelector } from 'react-redux'
+import { useParams, useNavigate } from 'react-router-dom';
 import sentences from './../paragraphs.js'
 import './GamePage.css'
+import Buzzer from './buzzer.mp3'
+import tickTick from './tick-tick.mp3'
 
 import Result from './../components/Result'
 
@@ -18,13 +21,13 @@ const ProgressBar = ({ progress }) => {
 };
 
 const GamePage = () => {
-    console.log(sentences);
-    // const navigate = useNavigate();
-    const gameMode = useSelector(state => state.currInfoReducer.gameMode)
-    const duration = useSelector(state => state.currInfoReducer.duration)
+    const navigate = useNavigate();
+    const { gameMode, duration } = useParams();
+
     const username = localStorage.getItem('username')
-    // const gameMode = 'Easy';
-    // const duration = 30;
+    
+    const textFieldRef = useRef(null);
+    
     const [resultModalOpen, setResultModalOpen] = useState(false);
     const [input, setInput] = useState();
     const [characters, setCharacters] = useState(["a a"]);
@@ -52,6 +55,14 @@ const GamePage = () => {
             setShowResult(true);
             setResultModalOpen(true);
         }
+        // if(timeLeft === 0) {
+        //     const audio = new Audio(Buzzer);
+        //     audio.play();
+        // } 
+        // if(timeLeft === 10) {
+        //     const audio = new Audio(tickTick);
+        //     audio.play();
+        // }
 
         return () => clearInterval(timer);
     }, [timeLeft, showResult]);
@@ -70,6 +81,7 @@ const GamePage = () => {
     };
 
     const handleInputChange = (e) => {
+        e.target.onpaste = (e) => e.preventDefault();
         setInput(e.target.value);
         const typedChar = e.target.value[e.target.value.length - 1];
         if (charIndex < characters.length && timeLeft > 0) {
@@ -116,8 +128,15 @@ const GamePage = () => {
 
     const getWPM = () => {
         const totalWords = (charIndex - mistakes) / 5;
-        const wpm = Math.round((totalWords / (60 - timeLeft)) * 60);
+        const wpm = Math.round((totalWords / (duration - timeLeft)) * 60);
         return wpm < 0 || !wpm || wpm === Infinity ? 0 : wpm;
+    };
+
+    const getScore = () => {
+        const wpm = getWPM();
+        const accuracyPercentage = getAccuracyPercentage();
+        const score = (wpm * accuracyPercentage) / 100;
+        return Math.round(score);
     };
 
     const resetGame = () => {
@@ -128,8 +147,8 @@ const GamePage = () => {
         setInput("");
         setShowResult(false);
         setResultModalOpen(false);
+        textFieldRef.current.focus();
     };
-
 
     const [progress, setProgress] = useState(0);
 
@@ -154,12 +173,18 @@ const GamePage = () => {
             setResultModalOpen(true);
         }
     }, [charIndex])
+
     useEffect(() => {
         if (charIndex === characters.length && !showResult) {
             setShowResult(true);
             setResultModalOpen(true);
         }
     }, [charIndex, showResult]);
+
+    // const handleMouseDown = (event) => {
+    //     event.preventDefault();
+    // };
+
     return (
         <Box sx={styles.outerBox}>
             {showResult && <Result
@@ -169,10 +194,16 @@ const GamePage = () => {
                 wpm={getWPM()}
                 timeLeft={timeLeft}
                 accuracy={getAccuracyPercentage()}
+                score={getScore()}
+                resetGame={resetGame}
             />}
             <Box sx={styles.wrapper} className='wrapper'>
                 <Box sx={styles.progressBar}>
-                    <Typography>{username}</Typography>
+                    <Box sx={styles.heading}>
+                        <Typography sx={{ fontWeight: 'bold' }} variant='h5'>{username}</Typography>
+                        <Typography>Score: {getScore()}</Typography>
+                    </Box>
+                    <br />
                     <ProgressBar progress={progress} />
                 </Box>
                 <div className='content-box'>
@@ -192,15 +223,18 @@ const GamePage = () => {
                         type="text"
                         sx={styles.inputField}
                         value={input}
+                        inputRef={textFieldRef}
                         onChange={handleInputChange}
                         autoFocus
+                        autoComplete='off'
+                        // inputProps={{ onMouseDown: handleMouseDown }}
                     />
                     <div className="content">
                         <ul className="result-details">
-                            <li className="time">
+                            <li className='time'>
                                 <p>Time Left:</p>
                                 <span>
-                                    <b>{timeLeft}</b>s
+                                    <b className={timeLeft <= 10 ? 'red' : 'time'}>{timeLeft}</b>s
                                 </span>
                             </li>
                             <li className="mistake">
@@ -216,7 +250,8 @@ const GamePage = () => {
                                 <span>{getAccuracyPercentage()}%</span>
                             </li>
                         </ul>
-                        <button onClick={resetGame}>Try Again</button>
+                        <button className='TryAgain' onClick={resetGame}>Try Again</button>
+                        <button className="quit" onClick={()=>navigate("/")}>Quit</button>
                     </div>
                 </div>
             </Box>
@@ -252,6 +287,13 @@ const styles = {
         borderRadius: '10px',
         border: '4px solid #007acc',
     },
+
+    heading: { 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        padding: '0 3%' 
+    }
 }
 
 export default GamePage;

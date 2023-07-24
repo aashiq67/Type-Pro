@@ -2,9 +2,9 @@ import React from 'react'
 import { Typography } from '@mui/material'
 
 const Logo = () => {
-  return (
-    <Typography sx={logoStyle}>TypePro</Typography>
-  )
+    return (
+        <Typography sx={logoStyle}>TypePro</Typography>
+    )
 }
 
 const logoStyle = {
@@ -15,6 +15,7 @@ const logoStyle = {
     textTransform: 'uppercase',
     letterSpacing: '2px',
     textShadow: '2px 2px 2px rgba(0, 0, 0, 0.3)',
+    marginRight: '5%'
 }
 
 export default Logo

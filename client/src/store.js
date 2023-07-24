@@ -4,10 +4,24 @@ const authInfoSlice = createSlice({
     name: 'auth',
     initialState: {
         username: String,
+        email: String,
+        isAuthenticated: false,
+        accuracy: 0,
+        score: 0
     },
     reducers: {
-        setUsername(state, action) {
+        login(state, action) {
+            state.email = action.payload.email;
             state.username = action.payload.username;
+            state.isAuthenticated = true;
+        },
+        logout(state) {
+            state.email = '';
+            state.isAuthenticated = false;
+        },
+        setStats(state, action) {
+            state.accuracy = action.payload.accuracy;
+            state.score = action.payload.score;
         }
     }
 });

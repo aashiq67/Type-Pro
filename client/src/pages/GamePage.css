@@ -1,3 +1,23 @@
+.moving-object {
+    position: absolute;
+    height: 15px;
+  }
+
+.progressBar {
+    width: 250px;
+    height: 250px;
+    position: absolute;
+    top: 20px;
+    right: 25px;
+}
+
+@media (min-width: 0px) {
+    .progressBar {
+        width: 250px;
+        height: 250px;
+    }
+}
+
 #paragraph{
     color: #646669;
 }
@@ -104,7 +124,7 @@
     justify-content: space-between;
     border-top: 3px solid #007acc;
 }
-.content button {
+.TryAgain {
     outline: none;
     border: none;
     width: 105px;
@@ -118,12 +138,55 @@
     background: none;
     transition: transform 0.2s ease;
 }
+.quit{
+    outline: none;
+    border: none;
+    width: 95px;
+    padding: 8px 0;
+    font-size: 17px;
+    font-weight: 600;
+    cursor: pointer;
+    border-radius: 15px;
+    background: none;
+    transition: transform 0.2s ease;
+    color: #df4242db;
+    border: 3px solid #df4242db;
+}
+/* .content button.quit-button {
+    color: #fff;
+    background-color: red;
+  } */
+
+  .result-details li.time {
+    font-size: 20px;
+    font-weight: bold;
+    color: black;
+  }
+  
+  /* Add styles for Mistakes */
+  .result-details li.mistake {
+    
+    color: red;
+  }
+  
+  /* Add styles for WPM */
+  .result-details li.wpm  {
+    font-weight: bold;
+    color: rgb(246, 149, 3);
+  }
+  
+  /* Add styles for Accuracy */
+  .result-details li.accuracy  {
+    font-weight: bold;
+    color: rgba(3, 181, 0, 0.997);
+  }
 .content button:active {
     transform: scale(0.89);
 }
 .content button:hover {
     background: #FFFFFF;
 }
+
 .content .result-details {
     display: flex;
     flex-wrap: wrap;
@@ -132,6 +195,7 @@
     justify-content: space-between;
 }
 .result-details li {
+    font-weight: bold;
     display: flex;
     height: 20px;
     list-style: none;
@@ -143,19 +207,26 @@
     border-left: 2px solid #bfbfbf;
 }
 .result-details li p {
-    font-size: 13px;
+    font-size: 15px;
 }
 .result-details li span {
+    font-weight: bolder;
     display: block;
-    font-size: 13px;
+    font-size: 15px;
     margin-left: 10px;
 }
-li span b {
+.content-box .result-details li .red {
+    color: red;
+  }
+  /* .content-box .result-details li span b {
+    color: red;
+  } */
+/* li span b {
     font-weight: 500;
-}
-li:not(:first-child) span {
+} */
+/* li:not(:first-child) span {
     font-weight: 500;
-}
+} */
 @media (max-width: 745px) {
     .wrapper {
         padding: 20px;

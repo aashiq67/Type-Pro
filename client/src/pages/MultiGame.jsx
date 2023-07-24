@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Box, TextField, Typography, LinearProgress } from '@mui/material'
-import { useSelector } from 'react-redux'
+import { useParams, useNavigate } from 'react-router-dom'
 
 import './GamePage.css'
 
-import Result from './../components/Result'
+import MultiResult from './../components/MultiResult'
 
 const ProgressBar = ({ progress }) => {
     return (
@@ -17,13 +17,12 @@ const ProgressBar = ({ progress }) => {
     );
 };
 
-const MultiGame = ({socket, room}) => {
-    // const navigate = useNavigate();
+const MultiGame = ({sockRef, room}) => {
+    const navigate = useNavigate();
     // const gameMode = useSelector(state => state.currInfoReducer.gameMode)
     // const duration = useSelector(state => state.currInfoReducer.duration)
     const username = localStorage.getItem('username')
-    const gameMode = 'Easy';
-    const duration = 30;
+    const { gameMode } = useParams()
     const [resultModalOpen, setResultModalOpen] = useState(false);
     const [input, setInput] = useState();
     const [characters, setCharacters] = useState(["a a"]);
@@ -64,11 +63,15 @@ const MultiGame = ({socket, room}) => {
         setIsTyping(true);
         setCharIndex(0);
         setMistakes(0);
-        setTimeLeft(duration);
+        if (gameMode === '' || gameMode === undefined)
+            setTimeLeft(room.duration);
+        else
+            setTimeLeft(60);
     };
 
     const handleInputChange = (e) => {
         setInput(e.target.value);
+        console.log(input, getWPM());
         const typedChar = e.target.value[e.target.value.length - 1];
         if (charIndex < characters.length && timeLeft > 0) {
             setTotalCharactersTyped((prevCount) => prevCount + 1);
@@ -76,7 +79,6 @@ const MultiGame = ({socket, room}) => {
                 setIsTyping(true);
             }
             if (e.nativeEvent.inputType === 'deleteContentBackward') {
-                // Backspace or delete key was pressed, handle the logic
                 setTotalCharactersTyped((prevCount) => Math.max(0, prevCount - 1));
                 if (charIndex > 0) {
                     setCharIndex((prevIndex) => prevIndex - 1);
@@ -117,15 +119,12 @@ const MultiGame = ({socket, room}) => {
         const wpm = Math.round((totalWords / (60 - timeLeft)) * 60);
         return wpm < 0 || !wpm || wpm === Infinity ? 0 : wpm;
     };
-
-    const resetGame = () => {
-        setCorrectCharacters(0);
-        setTotalCharactersTyped(0);
-        loadParagraph();
-        setIsTyping(false);
-        setInput("");
-        setShowResult(false);
-        setResultModalOpen(false);
+    
+    const getScore = () => {
+        const wpm = getWPM();
+        const accuracyPercentage = getAccuracyPercentage();
+        const score = (wpm * accuracyPercentage) / 100;
+        return Math.round(score);
     };
 
     const [progress, setProgress] = useState(0);
@@ -151,6 +150,7 @@ const MultiGame = ({socket, room}) => {
             setResultModalOpen(true);
         }
     }, [charIndex])
+
     useEffect(() => {
         if (charIndex === characters.length && !showResult) {
             setShowResult(true);
@@ -170,38 +170,52 @@ const MultiGame = ({socket, room}) => {
 
     useEffect(()=>{
         const data = room.roomMembers.map((member) => {
-            return { name: member.username, progress: 0, wpm: 0 }
+            return { username: member.username, progress: 0, wpm: 0, accuracy: 0, score: 0 }
         })
         setPlayersProgress(data);
     }, [])
 
     useEffect(() => {
+        if(playersProgress.length > 0) {
+            const filteredPlayersProgress = playersProgress.filter(player =>
+                room.roomMembers.some(member => member.username === player.username)
+            );
+            setPlayersProgress(filteredPlayersProgress);
+        }
+    }, [room])
+
+    useEffect(() => {
+        console.log(playersProgress.length, room.roomMembers.length);
         if (playersProgress.length === room.roomMembers.length)
-            socket.emit('sendProgress', { username, roomId: room.roomId, progress, wpm: getWPM(), accuracy: getAccuracyPercentage() });
+            sockRef.current.emit('sendProgress', { username, roomId: room.roomId, progress, wpm: getWPM(), accuracy: getAccuracyPercentage(), score: getScore() });
     }, [progress, getWPM()])
 
     useEffect(() => {
-        socket.on('receiveProgress', ({ sender, progress, wpm, accuracy }) => {
-            
-            const existingPlayerIndex = playersProgress.findIndex((player) => player.name === sender);
+        sockRef.current.on('receiveProgress', ({ sender, progress, wpm, accuracy, score }) => {
+            console.log(playersProgress);
+            const existingPlayerIndex = playersProgress.findIndex((player) => player.username === sender);
             
             if (existingPlayerIndex !== -1) {
                 const updatedPlayersProgress = [...playersProgress];
                 updatedPlayersProgress[existingPlayerIndex].progress = progress;
                 updatedPlayersProgress[existingPlayerIndex].wpm = wpm;
                 updatedPlayersProgress[existingPlayerIndex].accuracy = accuracy;
+                updatedPlayersProgress[existingPlayerIndex].score = score;
                 setPlayersProgress(updatedPlayersProgress);
             } else {
-                const newPlayerProgress = { name: sender, progress, wpm, accuracy };
+                const newPlayerProgress = { name: sender, progress, wpm, accuracy, score };
                 setPlayersProgress([...playersProgress, newPlayerProgress]);
             }
-            
         })
-    }, [socket, playersProgress])
+    }, [playersProgress])
+
+    useEffect(()=>{
+        playersProgress.sort((a, b) => b.score - a.score);
+    }, [playersProgress])
 
     return (
         <Box sx={styles.outerBox}>
-            {showResult && <Result
+            {showResult && <MultiResult
                 open={resultModalOpen}
                 mistakes={mistakes}
                 wpm={getWPM()}
@@ -210,13 +224,18 @@ const MultiGame = ({socket, room}) => {
                 playersProgress={playersProgress}
             />}
             <Box sx={styles.wrapper} className='wrapper'>
-                <Box sx={styles.progressBar}>
+                <Box sx={{ margin: '0 0 3%' }}>
+                    <center><Typography sx={{ fontWeight: 'bold' }} variant='h5'>{username}</Typography></center>
+                    <br />
+                    <ProgressBar progress={progress} />
+                </Box>
+                <Box className='progressBar'>
                     {playersProgress.length !== 0 && 
-                        playersProgress.map(player => (
-                            <Box>
+                        playersProgress.slice(0, 3).map((player, index) => (
+                            <Box key={index}>
                                 <Box sx={{display: 'flex', justifyContent: 'space-between', margin: '5% 1%'}}>
-                                    <Typography>{player.name}</Typography>
-                                    <Typography>WPM : {player.wpm}</Typography>
+                                    <Typography>{player.username}</Typography>
+                                    <Typography>Acc : {player.accuracy}</Typography>
                                 </Box>
                                 <ProgressBar progress={player.progress} />
                             </Box>
@@ -242,6 +261,7 @@ const MultiGame = ({socket, room}) => {
                         value={input}
                         onChange={handleInputChange}
                         autoFocus
+                        autoComplete='off'
                     />
                     <div className="content">
                         <ul className="result-details">
@@ -264,6 +284,7 @@ const MultiGame = ({socket, room}) => {
                                 <span>{getAccuracyPercentage()}%</span>
                             </li>
                         </ul>
+                        <button className="quit" onClick={() => navigate("/")}>Quit</button>
                     </div>
                 </div>
             </Box>

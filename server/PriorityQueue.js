@@ -1,9 +1,12 @@
 class PriorityQueue {
     constructor() {
         this.queue = [];
+        const capacity = 1000
     }
 
     enqueue(item) {
+        if(this.queue.length === 1000)
+            return undefined
         this.queue.push(item);
     }
 
@@ -40,14 +43,25 @@ class PriorityQueue {
             return undefined;
         }
         let index = -1;
-        this.queue.map((room, idx) => {
+        // console.log("tqbf", this.queue);
+        this.queue = this.queue.map((room, idx) => {
             if (room.roomMembers.some((member) => member.sockId === sockId)) {
                 room.roomMembers = room.roomMembers.filter((member) => member.sockId !== sockId);
                 index = idx
             }
             return room;
-        });
+        })
+        .filter((room) => room.roomMembers.length > 0);
+        console.log(index);
+        // console.log("tqaf", this.queue);
         return this.queue[index]
+    }
+
+    startGame() {
+        if (this.isEmpty()) {
+            return undefined;
+        }
+        return this.queue[this.queue.length - 1].isGameStarted = true;
     }
 
     isEmpty() {
